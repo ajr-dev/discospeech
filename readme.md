@@ -16,7 +16,7 @@
 </a>
 </p>
 
-A Discord bot that listens to voice chat, transcribes speech using Whisper, generates responses using Ollama, and speaks back using ElevenLabs TTS.
+A Discord bot that listens to voice chat, transcribes speech using Whisper, generates responses using Ollama, and speaks back using ElevenLabs or Bark TTS.
 
 ## 🚀 Features
 
