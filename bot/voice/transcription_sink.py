@@ -24,6 +24,7 @@ class TranscriptionSink(voice_recv.AudioSink):
         self.responses_dir.mkdir(exist_ok=True)
         self.logger = logger
         self.audio_buffers = {}
+        self.start_times = {}  # Track speaking start times
         self.processing_queue = asyncio.Queue()
         self._voice_client = None
         self._loop = asyncio.get_event_loop()
@@ -48,17 +49,30 @@ class TranscriptionSink(voice_recv.AudioSink):
     def write(self, user, data):
         if user not in self.audio_buffers:
             self.audio_buffers[user] = []
+            self.start_times[user] = time.time()  # check the duration for user input 
+            
         self.audio_buffers[user].append(data.pcm)
 
     @voice_recv.AudioSink.listener()
     def on_voice_member_speaking_stop(self, member):
         if member in self.audio_buffers:
-            audio_data = b''.join(self.audio_buffers[member])
-            self.audio_buffers[member] = []
-            asyncio.run_coroutine_threadsafe(
-                self.processing_queue.put((member, audio_data)),
+            #calc the total speaking duration for the user
+            start_time = self.start_times.get(member)
+            end_time = time.time()
+            speaking_duration = end_time - start_time if start_time else 0
+            self.logger.info(f"{member} spoke for {speaking_duration:.2f} seconds")
+
+            # Clear the start time for the user for next input
+            self.start_times.pop(member, None)
+
+            # Process the audio data
+            if speaking_duration>0.5:
+                audio_data = b''.join(self.audio_buffers[member])
+                self.audio_buffers[member] = []
+                asyncio.run_coroutine_threadsafe(
+                    self.processing_queue.put((member, audio_data)),
                 self._loop
-            )
+                )
 
     async def start_processing(self):
         while True:
